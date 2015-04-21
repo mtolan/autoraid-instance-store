@@ -1,0 +1,70 @@
+
+VAGRANTFILE_API_VERSION = "2"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+
+  config.vm.define "nonaws" do |nonaws|
+    nonaws.vm.box = "nonawsbox"
+    nonaws.vm.box_url = 'http://cloud-images.ubuntu.com/vagrant/trusty/current/trusty-server-cloudimg-amd64-vagrant-disk1.box'
+    nonaws.vm.provider "virtualbox" do |v|
+      v.memory = 1024
+      v.cpus = 1
+    end
+
+    nonaws.vm.provision "file", source: "../raid_ephemeral.sh", destination: "/tmp/raid_ephemeral.sh"
+    nonaws.vm.provision "shell", inline: "/tmp/raid_ephemeral.sh start"
+  end
+
+  config.vm.define "oneis" do |oneis|
+    oneis.vm.box = "nonawsbox"
+    oneis.vm.box_url = 'http://cloud-images.ubuntu.com/vagrant/trusty/current/trusty-server-cloudimg-amd64-vagrant-disk1.box'
+    oneis.vm.provider "virtualbox" do |v|
+      v.memory = 1024
+      v.cpus = 1
+
+      v.customize ['createhd', '--filename', '/tmp/oneis.disk1.vmdi', '--size', 100]
+      v.customize ['storageattach', :id, '--storagectl', 'SATAController', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', '/tmp/oneis.disk1.vmdi']
+    end
+
+    oneis.vm.provision "chef_solo" do |chef|
+      chef.add_recipe "awsmetadata"
+      chef.json = {
+        "awsmetadata" => {
+          "block_device_json" => "{'ami': ['/dev/sda'], 'ephemeral0': ['sdb']}"
+        }
+      }
+    end
+
+    oneis.vm.provision "file", source: "../raid_ephemeral.sh", destination: "/tmp/raid_ephemeral.sh"
+    oneis.vm.provision "shell", inline: "/tmp/raid_ephemeral.sh start"
+  end
+
+  config.vm.define "twois" do |twois|
+    twois.vm.box = "nonawsbox"
+    twois.vm.box_url = 'http://cloud-images.ubuntu.com/vagrant/trusty/current/trusty-server-cloudimg-amd64-vagrant-disk1.box'
+    twois.vm.provider "virtualbox" do |v|
+      v.memory = 1024
+      v.cpus = 1
+
+      v.customize ['createhd', '--filename', '/tmp/twois.disk1.vmdi', '--size', 100]
+      v.customize ['storageattach', :id, '--storagectl', 'SATAController', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', '/tmp/twois.disk1.vmdi']
+
+      v.customize ['createhd', '--filename', '/tmp/twois.disk2.vmdi', '--size', 100]
+      v.customize ['storageattach', :id, '--storagectl', 'SATAController', '--port', 2, '--device', 0, '--type', 'hdd', '--medium', '/tmp/twois.disk2.vmdi']
+    end
+
+    twois.vm.provision "chef_solo" do |chef|
+      chef.add_recipe "awsmetadata"
+      chef.json = {
+        "awsmetadata" => {
+          "block_device_json" => "{'ami': ['/dev/sda'], 'ephemeral0': ['sdb'], 'ephemeral1': ['sdc']}"
+        }
+      }
+    end
+
+    twois.vm.provision "file", source: "../raid_ephemeral.sh", destination: "/tmp/raid_ephemeral.sh"
+    twois.vm.provision "shell", inline: "/tmp/raid_ephemeral.sh start"
+  end
+
+
+end

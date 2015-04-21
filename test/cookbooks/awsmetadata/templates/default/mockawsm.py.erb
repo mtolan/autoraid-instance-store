@@ -1,0 +1,38 @@
+from flask import Flask, jsonify
+import json, os
+app = Flask(__name__)
+
+data = {
+	"latest": {
+		"meta-data": {
+			"block-device-mapping": <%= @block_device_json %>
+		}
+	}
+}
+
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def catch_all(path):
+	d = data
+	components = path.split("/")
+
+	if(path.endswith("/")):
+		for c in components:
+			if c != "":
+				d = d[c]
+		if type(d) is dict:
+			return "\n".join(d.keys())
+		if type(d) is list:
+			return "\n".join(d)
+		return d[c]
+	else:
+		for c in components:
+			d = d[c]
+		return c
+
+if __name__ == '__main__':
+	if os.geteuid() != 0:
+		app.run(debug=True)
+	else:
+		os.system("ifconfig lo:1 169.254.169.254 netmask 255.255.255.0 up")
+		app.run(host='169.254.169.254', port=80)
